@@ -22,11 +22,13 @@ def main(
     quiet: bool = Option(
         default=False, help="Output shows stats only not final answer"
     ),
+    shard: str = Option(
+        default="",
+        help="Letter to be used to split the pairs into smaller groups. Longer shard means faster run but more memory",
+    ),
 ) -> None:
     start_time = datetime.now()
-    with Progress(
-        *Progress.get_default_columns(), TimeElapsedColumn(), transient=True
-    ) as progress:
+    with Progress(*Progress.get_default_columns(), TimeElapsedColumn()) as progress:
         step_task = progress.add_task("Steps...", total=5)
         word_list = load_words(words, progress)
         progress.console.print(f"Loaded {len(word_list):,} words.")
@@ -44,10 +46,10 @@ def main(
         )
         progress.update(step_task, advance=1)
 
-        pair_index = index_pairs(pair_bitsets, progress)
+        pair_index = index_pairs(pair_bitsets, shard, progress)
 
         progress.update(step_task, advance=1)
-        quads = solve(pair_index, valid_solution_pairs, progress)
+        quads = solve(pair_index, valid_solution_pairs, shard, progress)
         solutions: set[frozenset[str]] = set()
         for pair, second_pair in quads:
             solutions |= reconstruct(word_list, pair_bitsets, pair, second_pair)

@@ -16,6 +16,7 @@ useful functions be computed easily:
 from __future__ import annotations
 
 import string
+from itertools import chain, combinations
 from pathlib import Path
 from typing import Sequence
 
@@ -30,6 +31,12 @@ ALL_LETTERS = (1 << 26) - 1
 LETTER_A = LETTERS["a"]
 LETTER_B = LETTERS["b"]
 LETTER_C = LETTERS["c"]
+
+
+def powerset(iterable):
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
 
 
 def load_words(input_words: Path, progress: Progress) -> dict[int, set[str]]:
@@ -99,19 +106,30 @@ def make_pairs(
     return pair_bitset
 
 
-def index_pairs(pair_list: Sequence[int], progress: Progress) -> dict[int, list[int]]:
-    """Returns an index by first|second letter of each pair
-    dict[first_letter|second_letter] -> list of pairs"""
-    index: dict[int, list[int]] = {
-        (a | b): [] for a in LETTERS.values() for b in LETTERS.values() if a != b
-    }
-    for word in progress.track(pair_list, description="Indexing..."):
-        first_bit = (~word + 1) & word
-        mask = word ^ first_bit
-        second_bit = (~mask + 1) & mask
-        index[first_bit | second_bit].append(word)
+def index_pairs(
+    pair_list: Sequence[int], shard: str, progress: Progress
+) -> dict[int, dict[int, list[int]]]:
+    """Returns one or more copies of dict[first_letter|second_letter] -> list of pairs
+    all wrapped in an outer dict indexed by a shard.
+    Shard 0 is simply the complete index, other shards are subsets of the index containing only pairs
+    where none of the bits in the shard are set in the pair.
+    """
+    shards = {}
+    for shard_set in progress.track(list(powerset(shard)), description=f"Indexing..."):
+        shard_bitset = sum(LETTERS[c] for c in shard_set)
 
-    return index
+        index: dict[int, list[int]] = {
+            (a | b): [] for a in LETTERS.values() for b in LETTERS.values() if a != b
+        }
+        for pair in pair_list:
+            if pair & shard_bitset:
+                continue
+            first_bit = (~pair + 1) & pair
+            mask = pair ^ first_bit
+            second_bit = (~mask + 1) & mask
+            index[first_bit | second_bit].append(pair)
+        shards[shard_bitset] = index
+    return shards
 
 
 # Once we have built the word pairs there are five situations to be considered to be sure we have included all solutions.
@@ -140,23 +158,27 @@ def index_pairs(pair_list: Sequence[int], progress: Progress) -> dict[int, list[
 # Scenario 5: the missing letter is not "a", "b", first or second letters not in pair_1 (so all other cases).
 # As for scenario 3 but choose pair_2 beginning first,second not in pair_1.
 def solve(
-    pair_index: dict[int, list[int]],
+    pair_index: dict[int, dict[int, list[int]]],
     valid_solution_pairs: set[int],
+    shard: str,
     progress: Progress,
 ) -> set[tuple[int, int]]:
     # Two pairs is a quad?
     quads: set[tuple[int, int]] = set()
 
     solve_task = progress.add_task("Solving...", total=3)
+    shard_bitset = sum(LETTERS[c] for c in shard)
 
     # Scenario 1. "a" is not in the solution
-    for pair in progress.track(pair_index[LETTER_B | LETTER_C], description="Step 1"):
+    for pair in progress.track(
+        pair_index[0][LETTER_B | LETTER_C], description="Step 1"
+    ):
         masked = pair | 1
         first_other = (masked + 1) & ~masked
         masked |= first_other
         second_other = (masked + 1) & ~masked
 
-        for second_pair in pair_index[first_other | second_other]:
+        for second_pair in pair_index[pair & shard_bitset][first_other | second_other]:
             if (not (pair & second_pair)) and (
                 pair | second_pair
             ) in valid_solution_pairs:
@@ -166,13 +188,15 @@ def solve(
     progress.update(solve_task, advance=1)
 
     # Scenario 2. "b" is not in the solution
-    for pair in progress.track(pair_index[LETTER_A | LETTER_C], description="Step 2"):
+    for pair in progress.track(
+        pair_index[0][LETTER_A | LETTER_C], description="Step 2"
+    ):
         masked = pair | 2
         first_other = (masked + 1) & ~masked
         masked |= first_other
         second_other = (masked + 1) & ~masked
 
-        for second_pair in pair_index[first_other | second_other]:
+        for second_pair in pair_index[pair & shard_bitset][first_other | second_other]:
             if (not (pair & second_pair)) and (
                 pair | second_pair
             ) in valid_solution_pairs:
@@ -181,7 +205,7 @@ def solve(
     progress.update(solve_task, advance=1)
 
     for pair in progress.track(
-        pair_index[LETTER_A | LETTER_B], description="Steps 3,4,5"
+        pair_index[0][LETTER_A | LETTER_B], description="Steps 3,4,5"
     ):
         masked = pair | 3
         first_other = (masked + 1) & ~masked
@@ -191,21 +215,21 @@ def solve(
         third_other = (masked + 1) & ~masked
 
         # Scenario 3: the missing letter is the first letter not in pair_1
-        for second_pair in pair_index[second_other | third_other]:
+        for second_pair in pair_index[pair & shard_bitset][second_other | third_other]:
             if (not (pair & second_pair)) and (
                 pair | second_pair
             ) in valid_solution_pairs:
                 quads.add((pair, second_pair))
 
         # Scenario 4: the missing letter is the second letter not in pair_1
-        for second_pair in pair_index[first_other | third_other]:
+        for second_pair in pair_index[pair & shard_bitset][first_other | third_other]:
             if (not (pair & second_pair)) and (
                 pair | second_pair
             ) in valid_solution_pairs:
                 quads.add((pair, second_pair))
 
         # Scenario 5: all other cases
-        for second_pair in pair_index[first_other | second_other]:
+        for second_pair in pair_index[pair & shard_bitset][first_other | second_other]:
             if (not (pair & second_pair)) and (
                 pair | second_pair
             ) in valid_solution_pairs:

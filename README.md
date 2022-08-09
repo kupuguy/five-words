@@ -11,8 +11,40 @@ My version goes back to brute forcing the result but with a few optimisations to
 At the time of writing, given [words_alpha.txt](https://github.com/dwyl/english-words) it will find 831 solutions
 in about 4 minutes on a 2019 Macbook Pro.
 
-Algorithm
-=========
+## Installation
+
+Get hold of the word list mentioned above. I'll assume you save it in data/words_alpha.txt
+
+Create a Python virtual environment in whatever way you prefer. 
+e.g. Using pyenv to create and activate an environment called `words`
+
+```bash
+$ pyenv virtualenv 3.11b0 words
+$ pyenv local words
+```
+
+Install dependencies. If `poetry` is your thing just do `poetry install`, otherwise if you're a `pip`er do
+```bash
+$ pip install rich typer
+$ pip install -e .
+```
+
+Now you should be able to run:
+```bash
+$ python -m words data/words_alpha.txt
+```
+This is the basic brute force algorithm. On my macbook it takes about 4 minutes 30 to complete.
+At the end it will print out all 831 combinations that it find or you can give it `--quiet` and 
+it just tells you how many and how long it took.
+
+Or for a bit of fun use the `--shards` option to split the data up into smaller groups. The more 
+groups the faster it might complete but it will take more memory. The parameter is a list of lower
+case letters to use as a mask when splitting data.
+
+![Sample output running on a macbook, took 55 seconds](docs/output.png)
+
+
+## Algorithm
 
 1. Convert each 5 letter word with distinct letters to a bitset, build a dictionary mapping the resulting bitsets to 
    the set of words that produce each bitset.
