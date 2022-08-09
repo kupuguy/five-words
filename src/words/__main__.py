@@ -25,8 +25,7 @@ def main(
 ) -> None:
     start_time = datetime.now()
     with Progress(
-        *Progress.get_default_columns(),
-        TimeElapsedColumn(),
+        *Progress.get_default_columns(), TimeElapsedColumn(), transient=True
     ) as progress:
         step_task = progress.add_task("Steps...", total=5)
         word_list = load_words(words, progress)

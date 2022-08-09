@@ -150,7 +150,7 @@ def solve(
     solve_task = progress.add_task("Solving...", total=3)
 
     # Scenario 1. "a" is not in the solution
-    for pair in pair_index[LETTER_B | LETTER_C]:
+    for pair in progress.track(pair_index[LETTER_B | LETTER_C], description="Step 1"):
         masked = pair | 1
         first_other = (masked + 1) & ~masked
         masked |= first_other
@@ -166,7 +166,7 @@ def solve(
     progress.update(solve_task, advance=1)
 
     # Scenario 2. "b" is not in the solution
-    for pair in pair_index[LETTER_A | LETTER_C]:
+    for pair in progress.track(pair_index[LETTER_A | LETTER_C], description="Step 2"):
         masked = pair | 2
         first_other = (masked + 1) & ~masked
         masked |= first_other
@@ -180,7 +180,9 @@ def solve(
     progress.console.log(f"Found {len(quads)} quads")
     progress.update(solve_task, advance=1)
 
-    for pair in pair_index[LETTER_A | LETTER_B]:
+    for pair in progress.track(
+        pair_index[LETTER_A | LETTER_B], description="Steps 3,4,5"
+    ):
         masked = pair | 3
         first_other = (masked + 1) & ~masked
         masked = masked | first_other
