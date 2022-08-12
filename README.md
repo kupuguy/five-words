@@ -8,8 +8,8 @@ Matt's work inspired [Benjamin Paassen](https://gitlab.com/bpaassen/five_clique)
 graph theory to improve the run time to just 22 minutes.
 
 My version goes back to brute forcing the result but with a few optimisations to speed up the Python code.
-At the time of writing, given [words_alpha.txt](https://github.com/dwyl/english-words) it will find 831 solutions
-in about 4 minutes on a 2019 Macbook Pro.
+At the time of writing, given [words_alpha.txt](https://github.com/dwyl/english-words) it will find 538 solutions
+excluding anagrams in about 4 seconds on a 2019 Macbook Pro using pypy, or 35 seconds using Python 3.11.
 
 ## Installation
 
@@ -39,7 +39,9 @@ it just tells you how many and how long it took.
 
 Or for a bit of fun use the `--shards` option to split the data up into smaller groups. The more 
 groups the faster it might complete but it will take more memory. The parameter is a list of lower
-case letters to use as a mask when splitting data.
+case letters to use as a mask when splitting data. This parameter defaults to splitting on `einot`.
+
+Use --no-anagrams to get only one solution where a word has anagrams instead of one solution for each anagram.
 
 ![Sample output running on a macbook, took 55 seconds](docs/output.png)
 

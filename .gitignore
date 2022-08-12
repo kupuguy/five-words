@@ -160,3 +160,4 @@ cython_debug/
 .idea/
 /data/wordle-words.txt
 /data/words_alpha.txt
+*.csv

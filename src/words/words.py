@@ -39,18 +39,27 @@ def powerset(iterable):
     return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
 
 
-def load_words(input_words: Path, progress: Progress) -> dict[int, set[str]]:
+def load_words(
+    input_words: Path, progress: Progress, anagrams: bool = True
+) -> dict[int, set[str]]:
     word_list: dict[int, set[str]] = {}
     with progress.open(input_words, "r", description="Loading...") as file:
-        for word in file:
-            word = word.strip().lower()
-            if len(word) == 5 and len(set(word)) == 5:
-                bitset = sum(LETTERS[c] for c in word)
-                if bitset in word_list:
-                    word_list[bitset].add(word)
-                else:
-                    word_list[bitset] = {word}
-
+        if anagrams:
+            for word in file:
+                word = word.strip().lower()
+                if len(word) == 5 and len(set(word)) == 5:
+                    bitset = sum(LETTERS[c] for c in word)
+                    if bitset in word_list:
+                        word_list[bitset].add(word)
+                    else:
+                        word_list[bitset] = {word}
+        else:
+            for word in file:
+                word = word.strip().lower()
+                if len(word) == 5 and len(set(word)) == 5:
+                    bitset = sum(LETTERS[c] for c in word)
+                    if bitset not in word_list:
+                        word_list[bitset] = {word}
     return word_list
 
 
